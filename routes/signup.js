@@ -1,22 +1,46 @@
 var express = require('express');
 var router = express.Router();
 const client = require('@sendgrid/client');
+const { check, validationResult } = require('express-validator');
 
 client.setApiKey(process.env.SENDGRID_API_KEY);
 
-router.post('/', async function(req, res, next) {
+const signupValidate = [
+    // Check Email
+    check('email', 'Invalid Email').isEmail()
+    .isLength({ max: 50 }).trim().escape().normalizeEmail(),
+    // Check SmartphoneType
+    check('smartphone_type', 'Invalid SmartphoneType')
+        .isLength({ max: 7 }).trim().escape()
+        .custom((value) => {
+            if (value != "android" && value != "ios" && value != "no") {
+            throw new Error('Invalid SmartphoneType');
+            }
+            return true;
+        }),
+    // Check FormalTrial
+    check('formal_trial', 'Invalid FormalTrial')
+        .custom((value) => {
+            if (typeof(value) != 'boolean')
+                throw new Error('Invalid FormalTrial');
+            return true;
+        }),
+    // Check Study
+    check('study', 'Invalid Study')
+        .custom((value) => {
+            if (typeof(value) != 'boolean')
+                throw new Error('Invalid Study');
+            return true;
+        }),
+];
 
-    console.log("Req Body");
-    console.log(req.body);
+router.post('/', signupValidate, async function(req, res, next) {
 
-    if(req.body["email"] == undefined || 
-        req.body["smartphone_type"] == undefined ||
-        req.body["formal_trial"] == undefined ||
-        req.body["study"] == undefined) {
-            console.log("Missing Params!");
-            res.status(400).send('Missing Params!');
-        }
-    
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(422).json({ errors: errors.array() });
+    }
+
     //Get Sendgrid Contact Lists
     const requestList = {
         method: 'GET',
