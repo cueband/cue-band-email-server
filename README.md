@@ -1,5 +1,5 @@
 # Cue Band Email Server
-Server allowing people to register their interest in being contacted to participate in the study. This serves as a middleware between the website's [Get Involved form](https://cue.band/getinvolved) and Sendgrid Marketing featuring. All data collected in thourhg this server is stored on Sendgrid.
+This server allows people to register their interest in being contacted to participate in the study. This serves as a middleware between the website's [Get Involved form](https://cue.band/getinvolved) and Sendgrid Marketing feature. All data collected through this server is stored on Sendgrid.
 
 ## Envrionment variables
 The API requires the following envrionment variables, store these in a `.env` file at the route of the directory,
