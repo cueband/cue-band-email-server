@@ -88,7 +88,8 @@ router.post('/', signupValidate, async function(req, res, next) {
     //Generate activation token
     const activationToken = crypto.randomBytes(128).toString('hex');
 
-    if(searchBody.contact_count == 0 || (searchBody.contact_count > 0 && searchBody.result[0].custom_fields.consent_get_involved_activated == 'false')) {
+    if(searchBody.contact_count == 0 || 
+        (searchBody.contact_count > 0 && (searchBody.result[0].custom_fields.consent_get_involved_activated == 'false' || searchBody.result[0].custom_fields.consent_get_involved_activated == '' || searchBody.result[0].custom_fields.consent_get_involved_activated == null || searchBody.result[0].custom_fields.consent_get_involved_activated == undefined))) {
         custom_fields['consent_get_involved_activation_token'] = activationToken;
         custom_fields['consent_get_involved_activated'] = 'false';
     }
@@ -118,24 +119,35 @@ router.post('/', signupValidate, async function(req, res, next) {
     }
 
     //if already activated, no need to send email
-    if(searchBody.contact_count > 0 && searchBody.result[0].custom_fields.consent_get_involved_activated == 'true')
+    if(searchBody.contact_count > 0 && searchBody.result[0].custom_fields.consent_get_involved_activated == 'true') {
+        console.log('Contact already exists, dont send email', req.body["email"], searchBody.contact_count, searchBody.result[0].custom_fields.consent_get_involved_activated);
         return res.status(200).send('Saved contact');
+    }
 
     //Send verification email
+    console.log("Sending email");
+
+    const emailDelayMinutes = 3;
+    const currentTime =  new Date();
+    currentTime.setMinutes(currentTime.getMinutes() + emailDelayMinutes);
+    const unixTimeInSeconds = Math.round(currentTime.getTime() / 1000);
+
+    const confirmEmailEndpoint = '/confirm-email'; 
+
     const emailBody = {
         to: req.body["email"],
         from: 'kyle.montague@northumbria.ac.uk',
         subject: 'CueBand - Email verification',
-        text:`
-        Hello, thanks for registering your interetest in CueBand.
-        Please copy and paste the address below to verify your account.
-        http://localhost:3000/verify-email?token=${activationToken}`,
-        html: `
-        <h1>Hello, </h1>
-        <p>Thanks for registering your interetest in CueBand.</p>
-        <p>Please click the link below to verify your account.</p>
-        <a href="http://localhost:3000/verify-email?token=${activationToken}"> Verify your account </a>`
-    } 
+        templateId: 'd-973d2090ce98425f9cee2bbec0d14e3f',
+        dynamicTemplateData: {
+            tokenLink: `${process.env.DOMAIN_URL}${confirmEmailEndpoint}?token=${activationToken}`,
+            email: req.body["email"],
+        },
+        sendAt: unixTimeInSeconds,
+        categories: [
+            'transactional', 'customer', 'weekly',
+        ]
+    }
 
     try {
         await sgMail.send(emailBody);

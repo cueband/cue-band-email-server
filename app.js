@@ -8,7 +8,7 @@ require('dotenv').config()
 
 var indexRouter = require('./routes/index');
 var signupRouter = require('./routes/signup');
-var verifyEmailRouter = require('./routes/verify-email');
+var verifyEmailRouter = require('./routes/confirm-email');
 
 var app = express();
 
@@ -26,7 +26,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 //app.use('/', indexRouter);
 app.use('/signup', signupRouter);
-app.use('/verify-email', verifyEmailRouter);
+app.use('/confirm-email', verifyEmailRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
