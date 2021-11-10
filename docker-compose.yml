@@ -1,5 +1,11 @@
 version: '3.8'
 services:
+  caddy:      
+    build: ./caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
   web:
     build:
       context: ./

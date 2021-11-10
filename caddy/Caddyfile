@@ -1,0 +1,3 @@
+app.luiscarvalho.dev {    
+	reverse_proxy cue-band-email-server_web_1:3000
+}
