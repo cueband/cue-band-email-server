@@ -3,30 +3,35 @@ var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
-var cors = require('cors')
-require('dotenv').config()
+var cors = require('cors');
+var dotenv = require('dotenv');
+
+const result = dotenv.config()
+if (result.error) {
+  throw result.error
+}
+
+const requiredEnvVariables = [process.env.SENDGRID_API_KEY, process.env.DOMAIN_URL, process.env.EMAIL_SENDER, 
+  process.env.CONFIRM_EMAIL_TEMPLATE_ID,  process.env.TOKEN_ERROR_REDIRECT_URL, 
+  process.env.TOKEN_ACTIVATED_REDIRECT_URL, process.env.CONTACT_LIST_NAME];
+
+for(const variable of requiredEnvVariables) {
+  if(variable == undefined)
+    throw Error('Required env variable missing!');
+}
 
 var indexRouter = require('./routes/index');
-var signupRouter = require('./routes/signup');
-var verifyEmailRouter = require('./routes/confirm-email');
 
 var app = express();
 
 app.use(cors())
 
-// view engine setup
-app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'jade');
-
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
 
-//app.use('/', indexRouter);
-app.use('/signup', signupRouter);
-app.use('/confirm-email', verifyEmailRouter);
+app.use(indexRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
