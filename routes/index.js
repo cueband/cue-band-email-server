@@ -11,9 +11,9 @@ const signupValidate = [
   .isLength({ max: 50 }).trim().escape().normalizeEmail(),
   // Check SmartphoneType
   check('smartphone_type', 'Invalid SmartphoneType')
-      .isLength({ max: 7 }).trim().escape()
+      .isLength({ max: 10 }).trim().escape()
       .custom((value) => {
-          if (value != "android" && value != "ios" && value != "no") {
+          if (value != "android" && value != "ios" && value != "no" && value != "unknown") {
           throw new Error('Invalid SmartphoneType');
           }
           return true;
