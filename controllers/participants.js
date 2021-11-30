@@ -50,18 +50,47 @@ checkIfContactExists = async(email, listId) => {
     return searchBody.contact_count == 0 ? null : searchBody.result[0];
 }
 
+
+getCustomFieldsIds = async() => {
+
+    const requestTemp = {
+        method: 'GET',
+        url: 'v3/marketing/field_definitions',
+    };
+
+    try {
+        let [response, body] = await sgClient.request(requestTemp)
+        if(response.statusCode != 200)
+            return null;
+
+        let customFieldMap = {}
+
+        for(let customField of body.custom_fields) {
+            customFieldMap[customField.name] = customField.id; 
+        }
+        return customFieldMap;
+    } catch (error) {
+        console.log(error);
+        return null;
+    }
+}
+
 sendNewContactToSendgrid = async(contact, activationToken, listId, email, formalTrial, smartphoneType, study) => {
 
-    const custom_fields = {
-        consent_get_involved_formal_trial: formalTrial,
-        consent_get_involved_smartphone_type: smartphoneType,
-        consent_get_involved_study: study,
-    }
+    let customFieldsIds = await getCustomFieldsIds();
+
+    if(customFieldsIds == null)
+        return false;
+
+    const custom_fields = {}
+    custom_fields[customFieldsIds['consent_get_involved_formal_trial']] = formalTrial;
+    custom_fields[customFieldsIds['consent_get_involved_smartphone_type']] = smartphoneType;
+    custom_fields[customFieldsIds['consent_get_involved_study']] = study;
 
     if(contact == null || 
         (contact != null && (contact.custom_fields.consent_get_involved_activated == 'false' || contact.custom_fields.consent_get_involved_activated == '' || contact.custom_fields.consent_get_involved_activated == null || contact.custom_fields.consent_get_involved_activated == undefined))) {
-        custom_fields['consent_get_involved_activation_token'] = activationToken;
-        custom_fields['consent_get_involved_activated'] = 'false';
+        custom_fields[customFieldsIds['consent_get_involved_activation_token']] = activationToken;
+        custom_fields[customFieldsIds['consent_get_involved_activated']] = 'false';
     }
 
     //Send new contact to Sendgrid
@@ -74,21 +103,27 @@ sendNewContactToSendgrid = async(contact, activationToken, listId, email, formal
             }
         ],
     }
+
     const request = {
         method: 'PUT',
         url: '/v3/marketing/contacts',
         body: data,
     };
-    let [responseContact, bodyContact] = await sgClient.request(request)
 
-    if(responseContact.statusCode == 202 || responseContact.statusCode == 200) {
-        console.log('Saved contact');
-        return true;
-    } else {
+    try {
+        let [responseContact, bodyContact] = await sgClient.request(request)
+        if(responseContact.statusCode == 202 || responseContact.statusCode == 200) {
+            console.log('Saved contact');
+            return true;
+        } else {
+            console.log('Error on contact saving');
+            return false;
+        }
+    } catch (error) {
+        console.log(error.response.body.errors);
         console.log('Error on contact saving');
         return false;
     }
-
 }
 
 sendConfirmationEmail = async(email, activationToken) => {
@@ -183,28 +218,40 @@ exports.postSignUp = async (req, res, next) => {
             return res.status(422).json({ errors: errors.array() });
         }
 
+        console.log("A");
+
         //Get Sendgrid Contact Lists
         const consentList = await getSendgridContactList();
         if(consentList == null)
             return res.status(500).send('Error Signing Up');
 
 
+        console.log("B");
+
         //Check if contact already exists and it's activated.
         const contact = await checkIfContactExists(req.body["email"], consentList.id);
 
+        console.log("C");
+
         //Generate activation token
         const activationToken = crypto.randomBytes(128).toString('hex');
+
+        console.log("D");
 
         //Send new contact to Sendgrid
         const sendSuccessful = await sendNewContactToSendgrid(contact, activationToken, consentList.id, req.body["email"], req.body["formal_trial"].toString(), req.body["smartphone_type"].toString(), req.body["study"].toString());
         if(!sendSuccessful)
             return res.status(500).send('Error Signing Up');
 
+        console.log("E");
+        
         //if already activated, no need to send email
         if(contact != null && contact.custom_fields.consent_get_involved_activated == 'true') {
             console.log('Contact already exists, dont send email', req.body["email"], contact, contact.custom_fields.consent_get_involved_activated);
             return res.status(200).send('Saved contact');
         }
+
+        console.log("F");
         
         //Send Confirmation email
         console.log("Sending email");
